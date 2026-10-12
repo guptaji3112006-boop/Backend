@@ -1,0 +1,31 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.sample
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Certificates and private keys
+*.pem
+*.key
+*.crt
+
+# Coverage and build output
+coverage/
+dist/
+build/
