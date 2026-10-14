@@ -59,6 +59,14 @@ userSchema.pre("save", async function (next) {
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
+  if (
+    typeof password !== "string" ||
+    !password ||
+    typeof this.password !== "string" ||
+    !this.password
+  ) {
+    return false;
+  }
   return await bcrypt.compare(password, this.password);
 };
 userSchema.methods.generateRefreshToken = function () {
@@ -69,9 +77,9 @@ userSchema.methods.generateRefreshToken = function () {
       username: this.username,
       fullname: this.fullname,
     },
-    process.env.ACCESS_TOKEN_SECRET,
+    process.env.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     },
   );
 };
@@ -82,9 +90,9 @@ userSchema.methods.generateAccessToken = function () {
       _id: this._id,
     },
 
-    process.env.REFRESH_TOKEN_SECRET,
+    process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     },
   );
 };
