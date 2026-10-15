@@ -159,7 +159,7 @@ const logOutUser = asyncHandler(async (req, res) => {
     req.user._id,
     {
       $set: {
-        refreshToken: undefined,
+        refreshToken: 1,
       },
     },
     {
@@ -232,7 +232,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   const user = await User.findById(req.user?._id);
 
-  const isPasswordCorrect = await User.isPasswordCorrect(oldPassword);
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
   if (!isPasswordCorrect) {
     throw new ApiError(400, "old Password is not correct");
@@ -266,10 +266,11 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
       $set: {
         fullname,
         email: email,
+        username,
       },
     },
     { new: true },
-  ).select(-password);
+  ).select("-password");
 
   return res
     .status(200)
@@ -299,11 +300,11 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     {
       new: true,
     },
-  ).select(-password);
+  ).select("-password");
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "Avatar image updated successfully "));
+    .json(new ApiResponse(200, "user", "Avatar image updated successfully "));
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
@@ -329,7 +330,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     {
       new: true,
     },
-  ).select(-password);
+  ).select("-password");
 
   return res
     .status(200)
@@ -367,11 +368,11 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
     {
       $addFields: {
-        subscriberCount: {
+        subscribersCount: {
           $size: "$subscribers",
         },
-        ChannelSubscribedToCount: {
-          $size: "subscribedTo",
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
         },
         isSubscribed: {
           $cond: {
@@ -396,7 +397,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
   ]);
 
-  if (!channel?.length()) {
+  if (!channel?.length) {
     throw new ApiError(404, "channel does not exist");
   }
   return res
@@ -405,7 +406,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
-  const user = await user.aggregate([
+  const user = await User.aggregate([
     {
       $match: {
         _id: new mongoose.Types.ObjectId(req.user._id),
