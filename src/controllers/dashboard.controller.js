@@ -6,8 +6,6 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
 
-
-
 const getChannelStats = asyncHandler(async (req, res) => {
   if (!req.user?._id) {
     throw new ApiError(401, "Unauthorized request");
@@ -55,8 +53,15 @@ const getChannelStats = asyncHandler(async (req, res) => {
 });
 
 const getChannelVideos = asyncHandler(async (req, res) => {
-  // TODO: Get all the videos uploaded by the channel
+  if (!req.user?._id) {
+    throw new ApiError(401, "Unauthorized request");
+  }
+
+  const videos = await Video.find({ owner: req.user._id }).lean();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Channel videos fetched successfully", videos));
 });
 
 export { getChannelStats, getChannelVideos };
-

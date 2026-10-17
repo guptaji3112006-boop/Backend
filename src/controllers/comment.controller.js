@@ -3,6 +3,7 @@ import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
+import { video } from "../models/video.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
   //TODO: get all comments for a video
@@ -50,9 +51,9 @@ const addComment = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Comment content is required");
   }
 
-  const video = await Video.findById(videoId);
+  const videos = await video.findById(videoId);
 
-  if (!video) {
+  if (!videos) {
     throw new ApiError(400, "video is required ");
   }
 
@@ -115,7 +116,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     throw new ApiError(401, "You can only delete your own comments");
   }
 
-  await comment.findByIdAndDelete(commentId);
+  await comment.deleteOne();
 
   return res
     .status(200)

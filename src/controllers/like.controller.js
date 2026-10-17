@@ -5,6 +5,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asynchandler.js";
 import { video as Video } from "../models/video.js";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+import { Tweet } from "../models/tweets.model.js";
+import { Comment } from "../models/comment.model.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
@@ -47,8 +49,8 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid comment id");
   }
 
-  const Comment = await comment.exists({ _id: commentId });
-  if (!Comment) {
+  const comment = await Comment.exists({ _id: commentId });
+  if (!comment) {
     throw new ApiError(404, "Comment not found ");
   }
 
@@ -78,8 +80,8 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     throw new ApiError(400, " Invalid tweet id ");
   }
 
-  const Tweet = await tweet.exists({ _id: tweetId });
-  if (!Tweet) {
+  const tweet = await Tweet.exists({ _id: tweetId });
+  if (!tweet) {
     throw new ApiError(404, "Tweet not  found ");
   }
 

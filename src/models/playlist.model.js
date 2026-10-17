@@ -1,24 +1,25 @@
-import mongoose, {Schema} from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
+const playlistSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    videos: [{ type: Schema.Types.ObjectId, ref: "Video" }],
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true },
+);
 
-const likeSchema = new Schema({
-    video: {
-        type: Schema.Types.ObjectId,
-        ref: "Video"
-    },
-    comment: {
-        type: Schema.Types.ObjectId,
-        ref: "Comment"
-    },
-    tweet: {
-        type: Schema.Types.ObjectId,
-        ref: "Tweet"
-    },
-    likedBy: {
-        type: Schema.Types.ObjectId,
-        ref: "User"
-    },
-    
-}, {timestamps: true})
-
-export const Like = mongoose.model("Like", likeSchema)
+export const Playlist = mongoose.model("Playlist", playlistSchema);

@@ -1,0 +1,887 @@
+{
+  "info": {
+    "name": "Backend2 - All Routes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "All declared Express routes plus video search example. Import the environment, select it, configure credentials, then run requests individually. Register requires an avatar; login saves tokens; create requests save IDs. Cleanup deletes data. Known controller bugs are documented on affected requests. Assertions expect success and will expose these failures. No live API verification has been performed."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('HTTP response is successful (2xx)', function () {",
+          " pm.expect(pm.response.code).to.be.within(200, 299);",
+          "});",
+          "pm.test('Response is JSON', function () {",
+          " pm.response.json();",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/healthcheck/",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Users",
+      "item": [
+        {
+          "name": "Register user (select avatar file)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/register",
+            "description": "Avatar is required. Select a local image in Body > form-data. Cover image is optional. Uses Cloudinary.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullname",
+                  "value": "{{fullname}}",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "{{email}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "text"
+                },
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "coverImage",
+                  "type": "file",
+                  "src": [],
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  const d = r.data && typeof r.data === 'object' ? r.data : r.message;",
+                  "  if (d && d._id) pm.environment.set('userId', d._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (save tokens and user ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/login",
+            "description": "Provide both username and email: the current controller queries both together. Saves tokens and userId into the selected environment.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  " const d = pm.response.json().data;",
+                  " pm.test('Login returns access token', () => pm.expect(d.accessToken).to.be.a('string').and.not.empty);",
+                  " if(d.accessToken) pm.environment.set('accessToken',d.accessToken);",
+                  " if(d.refreshToken) pm.environment.set('refreshToken',d.refreshToken);",
+                  " if(d.user && d.user._id) pm.environment.set('userId',d.user._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/current-user",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  const d = r.data && typeof r.data === 'object' ? r.data : r.message;",
+                  "  if (d && d._id) pm.environment.set('userId', d._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh access token (known backend bugs)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/refresh-token",
+            "description": "Matches the current body field refreshAccessToken. Handler currently uses req.cookie instead of req.cookies, lacks jwt import, and has reversed validation; expect failure until fixed.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshAccessToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update account details",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/update-account",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullname\": \"{{fullname}}\",\n  \"email\": \"{{email}}\",\n  \"username\": \"{{username}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update avatar (select file)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/avatar",
+            "description": "Select a local avatar image. Current controller stores the literal string avatar instead of the uploaded URL.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update cover image (select file)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/cover-image",
+            "description": "Select a local cover image. Current controller stores the literal string coverImage instead of the uploaded URL.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "coverImage",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Channel profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/c/{{channelUsername}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Watch history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/history",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users/change-pwd",
+            "description": "Changes your password. After success update the password environment variable before logging in again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"{{password}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Videos",
+      "item": [
+        {
+          "name": "Publish video (select video and thumbnail)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/",
+            "description": "Select both local files. Uploads to Cloudinary and saves the created videoId.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Postman test video",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Uploaded from Postman",
+                  "type": "text"
+                },
+                {
+                  "key": "videoFile",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "thumbnail",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  const d = r.data && typeof r.data === 'object' ? r.data : r.message;",
+                  "  if (d && d._id) pm.environment.set('videoId', d._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List videos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/?page=1&limit=10&sortBy=createdAt&sortType=desc",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Search videos by user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/?page=1&limit=10&query=Postman&sortBy=createdAt&sortType=desc&userId={{userId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Get video",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/{{videoId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Update video",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/{{videoId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Updated Postman video",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Updated description",
+                  "type": "text"
+                },
+                {
+                  "key": "thumbnail",
+                  "type": "file",
+                  "src": [],
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle publish status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/toggle/publish/{{videoId}}",
+            "description": "Changes published/unpublished state. Send again to restore."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Comments",
+      "item": [
+        {
+          "name": "Add comment (known backend bug)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/comments/{{videoId}}",
+            "description": "Current controller references Video without importing it; expect failure until fixed. Saves commentId on success.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Postman test comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  const d = r.data && typeof r.data === 'object' ? r.data : r.message;",
+                  "  if (d && d._id) pm.environment.set('commentId', d._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List video comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/comments/{{videoId}}?page=1&limit=10",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Update comment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/comments/c/{{commentId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Updated Postman comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 Tweets",
+      "item": [
+        {
+          "name": "Create tweet (known backend bugs)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/tweets/",
+            "description": "Current handler expects userId although this route declares none, and does not pass content to Tweet.create. Expect failure until fixed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Postman test tweet\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  const d = r.data && typeof r.data === 'object' ? r.data : r.message;",
+                  "  if (d && d._id) pm.environment.set('tweetId', d._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get user tweets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/tweets/user/{{userId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Update tweet (known backend bug)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/tweets/{{tweetId}}",
+            "description": "Current handler checks Tweet.owner on the model instead of the fetched document.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Updated Postman tweet\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 Playlists",
+      "item": [
+        {
+          "name": "Create playlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/playlist/",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman test playlist\",\n  \"description\": \"API testing playlist\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const r = pm.response.json();",
+                  "  const d = r.data && typeof r.data === 'object' ? r.data : r.message;",
+                  "  if (d && d._id) pm.environment.set('playlistId', d._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get user playlists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/playlist/user/{{userId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Get playlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/playlist/{{playlistId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Update playlist",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/playlist/{{playlistId}}",
+            "description": "Current controller lacks an ownership check. Only use your own test playlist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Postman playlist\",\n  \"description\": \"Updated description\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add video to playlist",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/playlist/add/{{videoId}}/{{playlistId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove video from playlist",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/playlist/remove/{{videoId}}/{{playlistId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 Likes",
+      "item": [
+        {
+          "name": "Toggle video like",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/likes/toggle/v/{{videoId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle comment like (known backend bug)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/likes/toggle/c/{{commentId}}",
+            "description": "Handler references undefined comment variable; expect failure until fixed."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle tweet like (known backend bug)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/likes/toggle/t/{{tweetId}}",
+            "description": "Handler references undefined tweet variable; expect failure until fixed."
+          },
+          "response": []
+        },
+        {
+          "name": "Get liked videos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/likes/videos",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 Subscriptions",
+      "item": [
+        {
+          "name": "Toggle channel subscription",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/subscriptions/c/{{channelId}}",
+            "description": "Use another user ID as channelId. Subscribing to yourself is rejected. Send twice to restore original state."
+          },
+          "response": []
+        },
+        {
+          "name": "Get subscribed channels (route mismatch)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/subscriptions/c/{{channelId}}",
+            "description": "Declared route provides channelId, but handler reads subscriberId. Currently returns 400; request intentionally mirrors the declared route."
+          },
+          "response": []
+        },
+        {
+          "name": "Get channel subscribers (route mismatch)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/subscriptions/u/{{subscriberId}}",
+            "description": "Declared route provides subscriberId, but handler reads channelId. Currently returns 400; request intentionally mirrors the declared route."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "09 Dashboard",
+      "item": [
+        {
+          "name": "Get channel stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/dashboard/stats",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Get channel videos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/dashboard/videos",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10 Cleanup - run manually last",
+      "item": [
+        {
+          "name": "Delete comment (known backend bug)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/comments/c/{{commentId}}",
+            "description": "Permanently deletes the test comment. Current handler incorrectly calls findByIdAndDelete on the document."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete tweet (known backend bug)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/tweets/{{tweetId}}",
+            "description": "Permanently deletes the test tweet. Current handler checks Tweet.owner on the model."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete playlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/playlist/{{playlistId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete video",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/videos/{{videoId}}",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users/logout",
+            "description": "Uses the route currently declared in src/routes. Requires bearer authentication unless marked public."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { pm.environment.unset('accessToken'); pm.environment.unset('refreshToken'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
